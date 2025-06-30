@@ -2,6 +2,7 @@
 # FloodCast
 FloodCast is a multivariate time-series forecasting model for urban flood prediction using MTS - LSTM networks.
 
+```c
 📁 mtslstm_project/
 ├── config/
 │   └── camle_mtslstm.yaml       -> File YAML cấu hình
@@ -20,4 +21,4 @@ FloodCast is a multivariate time-series forecasting model for urban flood predic
 ├── main.py                      -> Entry point (nạp config và gọi các bước)
 ├── app.py                       -> Local Web Testing
 └── LSTM_Camle.ipynb             -> File Notebook follow LSTM model
-
+```
