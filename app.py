@@ -3,54 +3,55 @@
 import streamlit as st
 import pandas as pd
 import os
-from src.train import train_model
-from src.predict import forecast_future
+import joblib
 from src.utils import load_config
+from src.predict import forecast_future
+from tensorflow.keras.models import load_model
 
-st.set_page_config(page_title="MTS-LSTM Flood Forecast", layout="wide")
-
+st.set_page_config(page_title="🌊 Dự đoán mực nước 24h", layout="wide")
 st.title("🌊 Dự đoán mực nước 24h bằng MTS-LSTM")
 
-uploaded_file = st.file_uploader("📤 Tải lên file dữ liệu Excel (.xlsx) theo giờ", type=["xlsx"])
+uploaded_file = st.file_uploader("📤 Tải lên file dữ liệu Excel theo giờ (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
-    # Lưu file tạm để mô hình sử dụng
-    temp_input_path = "data/input_uploaded.xlsx"
-    with open(temp_input_path, "wb") as f:
+    # Lưu file tạm để dùng
+    temp_path = "data/input_uploaded.xlsx"
+    with open(temp_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
     st.success("✅ Tải file thành công!")
 
-    # Tải cấu hình YAML
+    # Tải cấu hình
     config = load_config("config/camle_mtslstm.yaml")
+    config["input_data"]["1h"] = temp_path
+    config["input_data"]["1D"] = "data/Cam_Le_Daily.xlsx"  # giữ nguyên
 
-    # Cập nhật đường dẫn dữ liệu vào cấu hình
-    config["data"]["1h"] = temp_input_path  # dùng file vừa upload
-    config["data"]["1D"] = "data/Cam_Le_Daily.xlsx"  # dữ liệu 1 ngày giữ nguyên
+    # Tải model đã huấn luyện
+    model_path = "trained-models/mtslstm_model.keras"
+    if not os.path.exists(model_path):
+        st.error("❌ Không tìm thấy model đã huấn luyện!")
+        st.stop()
+    model = load_model(model_path)
+    st.info("📦 Đã tải model huấn luyện sẵn.")
 
-    st.info("🚀 Đang huấn luyện và dự đoán, vui lòng chờ trong giây lát...")
+    # Load scalers
+    scalers = {
+        "1D": joblib.load("trained-models/scaler_1D.pkl"),
+        "1h": joblib.load("trained-models/scaler_1h.pkl")
+    }
 
-    model, scalers = train_model(config)
-    pred_df = forecast_future(config, model, scalers, return_df=True)
+    # Chạy dự đoán
+    st.info("🤖 Đang chạy dự đoán...")
+    pred_df = forecast_future(config, model, scalers, return_df=True)  # ⚠️ KHÔNG dùng scalers, return_df
 
+    # Hiển thị kết quả
     st.success("✅ Dự đoán hoàn tất!")
+    st.subheader("📈 Biểu đồ dự đoán mực nước")
+    st.line_chart(pred_df.set_index("Datetime")["Muc_nuoc_du_doan"])
 
-    # Hiển thị biểu đồ dự đoán
-    st.subheader("📈 Biểu đồ mực nước dự đoán 24h")
-    st.line_chart(data=pred_df.set_index("Datetime")["Muc_nuoc_du_doan"])
-
-    # Hiển thị bảng dữ liệu
-    st.subheader("📋 Dữ liệu dự đoán chi tiết")
+    st.subheader("📋 Bảng dữ liệu dự đoán")
     st.dataframe(pred_df)
 
-    # Nút tải file kết quả
-    csv = pred_df.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Tải kết quả CSV", data=csv, file_name="du_doan_muc_nuoc.csv", mime='text/csv')
-
-
-# Cài thư viện Streamlit 
-## pip install streamlit
-
-# Chạy Web App:  
-## streamlit run app.py
-### http://localhost:8501/
+    # Nút tải kết quả
+    csv = pred_df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Tải kết quả CSV", data=csv, file_name="du_doan_muc_nuoc.csv", mime="text/csv")

@@ -1,3 +1,5 @@
+import os
+import joblib 
 from src.preprocess import prepare_datasets
 from src.model import build_mtslstm_model
 from src.utils import create_scalers
@@ -30,4 +32,21 @@ def train_model(config):
         verbose=1
     )
 
+    print("✅ Huấn luyện hoàn tất.")
+
+     # 📁 Tạo thư mục nếu chưa tồn tại
+    os.makedirs("trained-models", exist_ok=True)
+
+    # 💾 Lưu model
+    model.save("trained-models/mtslstm_model.keras")  # dùng định dạng mới
+    print("💾 Đã lưu model tại: trained-models/mtslstm_model.keras")
+
+    # 💾 Lưu scalers (thêm vào đây)
+    joblib.dump(scalers['1D'], "trained-models/scaler_1D.pkl")
+    joblib.dump(scalers['1h'], "trained-models/scaler_1h.pkl")
+    print("💾 Đã lưu scaler vào thư mục trained-models")
+
     return model, scalers
+
+
+
